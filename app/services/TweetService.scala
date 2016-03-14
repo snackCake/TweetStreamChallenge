@@ -6,70 +6,56 @@ import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.stream._
 import akka.stream.scaladsl.Source
-import org.reactivestreams.{Subscription, Subscriber, Publisher}
-import play.api.Logger
+import org.reactivestreams.{Publisher, Subscriber}
+import play.api.{Configuration, Logger}
 import play.api.inject.ApplicationLifecycle
 import twitter4j._
 
 import scala.collection.mutable
 import scala.concurrent.Future
-import scala.collection.JavaConverters._
 
 /**
   *
   */
 @Singleton
-class TweetService @Inject()(appLifecycle: ApplicationLifecycle) {
-
-  implicit val system = ActorSystem("tweet-service")
-  implicit val materializer = ActorMaterializer()
-
-  private val publishers = mutable.Buffer[TweetPublisher]()
-  private val factory = new AsyncTwitterFactory()
-  private val cacheMax = 100
+class TweetService @Inject()(config: Configuration, appLifecycle: ApplicationLifecycle) {
 
   Logger.info(s"TweetService: Starting application.")
 
+  private lazy val searchTerms = config.getStringSeq("tweet.tags").getOrElse(Seq(""))
+  lazy val searchSource: Source[Status, NotUsed] = searchHashtags(searchTerms)
+
+  private lazy val tweetPublisher = new TweetPublisher
+  private implicit val system = ActorSystem("tweet-service")
+
+
   appLifecycle.addStopHook { () =>
-    publishers.foreach { _.shutdown() }
+    tweetPublisher.shutdown()
     Future.successful(())
   }
 
-  private val combinedPublisher = new Publisher[(String, Status)] with Subscriber[(String, Status)] with DuplicateCheckSubscriber[(String, Status)] {
-    private val eachSub = subscribers.foreach _
-    override def onError(t: Throwable): Unit = eachSub { _.onError(t) }
-    override def onSubscribe(s: Subscription): Unit = eachSub { _.onSubscribe(s) }
-    override def onComplete(): Unit = eachSub { _.onComplete }
-    override def onNext(t: (String, Status)): Unit = eachSub { _.onNext(t) }
-  }
+  private implicit val materializer = ActorMaterializer()
+  private val factory = new TwitterStreamFactory()
 
-  Seq("#jvm", "#java", "#scala", "#clojure", "#groovy", "#kotlin").foreach { hashtag =>
-    searchHashtag(hashtag).runForeach { status =>
-      combinedPublisher.onNext(hashtag -> status) }
-  }
-
-  def buildCombinedSource: Source[(String, Status), NotUsed] = Source.fromPublisher(combinedPublisher)
-
-  private def searchHashtag(hashtag: String): Source[Status, NotUsed] = {
-    val query = new Query(if (hashtag.startsWith("#")) hashtag else s"#$hashtag")
+  private def searchHashtags(searchString: Seq[String]): Source[Status, NotUsed] = {
+    val query = new FilterQuery(searchString: _*)
     createTweetSource(query)
   }
 
-  private def createTweetSource(query: Query): Source[Status, NotUsed] = {
-    val tweetPublisher = new TweetPublisher(query)
-    publishers.append(tweetPublisher)
-    tweetPublisher.twitter.search(query)
+  private def createTweetSource(query: FilterQuery): Source[Status, NotUsed] = {
+    tweetPublisher.twitter.filter(query)
     Source.fromPublisher(tweetPublisher)
   }
 
   private trait DuplicateCheckSubscriber[T] {
-
     protected val subscribers = mutable.Buffer[Subscriber[_ >: T]]()
-
-    def subscribe(s: Subscriber[_ >: T]): Unit = if (!subscribers.contains(s)) subscribers.append(s)
+    def subscribe(subscriber: Subscriber[_ >: T]): Unit =
+      if (!subscribers.contains(subscriber)) {
+        subscribers.append(subscriber)
+      }
   }
 
-  private class TweetPublisher(val query: Query) extends Publisher[Status] with DuplicateCheckSubscriber[Status] {
+  private class TweetPublisher extends Publisher[Status] with DuplicateCheckSubscriber[Status] {
 
     lazy val twitter = factory.getInstance()
 
@@ -78,31 +64,21 @@ class TweetService @Inject()(appLifecycle: ApplicationLifecycle) {
       subscribers.foreach { _.onComplete }
     }
 
-    twitter.addListener(new TwitterAdapter() {
+    twitter.addListener(new StatusAdapter() {
+      override def onStallWarning(warning: StallWarning): Unit =
+        Logger.warn(s"Twitter stall warning: ${warning.getMessage} with code: ${warning.getCode}")
 
-      override def searched(queryResult: QueryResult): Unit = {
-        queryResult.getTweets.asScala.foreach { tweet =>
-          subscribers.foreach { subscriber =>
-            subscriber.onNext(tweet)
-          }
-        }
-
-        if (queryResult.hasNext) {
-          // Get the next page.
-          val nextQuery = queryResult.nextQuery()
-          twitter.search(nextQuery)
-        } else {
-          // Restart the query
-          twitter.search(query)
-        }
-      }
-
-      override def onException(e: TwitterException, method: TwitterMethod) {
-        Logger.error(s"Twitter error: $method", e)
+      override def onException(ex: Exception): Unit = {
+        Logger.error(s"Twitter error:", ex)
         subscribers.foreach { subscriber =>
-          subscriber.onError(e)
+          subscriber.onError(ex)
         }
       }
+
+      override def onTrackLimitationNotice(numberOfLimitedStatuses: Int): Unit =
+        Logger.warn(s"Twitter limitation notice, numberOfLimitedStatuses: $numberOfLimitedStatuses")
+
+      override def onStatus(status: Status): Unit = subscribers.foreach { _.onNext(status) }
     })
   }
 }

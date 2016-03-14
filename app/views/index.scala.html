@@ -1,24 +1,16 @@
-@*
- * This template takes a single argument, a String containing a
- * message to display.
- *@
 @(message: String)
 
-@*
- * Call the the `main` template with two arguments. The first
- * argument is a `String` with the title of the page, the second
- * argument is an `Html` object containing the body of the page.
- *@
 @main("Welcome to Play") {
 
     <script type="text/javascript">
-            var cometMessage = function(event) { console.log('Received event: ' + event) }
+            var cometMessage = function(event) {
+                $('#js-tweets').append('<li>' + event + '</li>')
+            }
     </script>
-    <iframe src="@routes.TweetCometController.tweetComet"></iframe>
-    @*
-     * Get an `Html` object by calling the built-in Play welcome
-     * template and passing a `String` message.
-     *@
-    @play20.welcome(message, style = "Scala")
-
+    <iframe class="comet-hidden" src="@routes.TweetCometController.tweetComet"></iframe>
+    <div>
+        <h2>Tweets go here</h2>
+        <ul id="js-tweets">
+        </ul>
+    </div>
 }
