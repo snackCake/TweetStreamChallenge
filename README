@@ -1,0 +1,6 @@
+TweetStreamChallenge
+
+Your challenge:
+
+* Write all hashtags and authors to a database of your choosing (MySQL, PostgreSQL, Cassandra).
+* Don't slow the comet stream down.
