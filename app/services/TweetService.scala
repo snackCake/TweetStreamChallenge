@@ -46,6 +46,16 @@ class TweetService @Inject()(config: Configuration, appLifecycle: ApplicationLif
       protected val subscribers = mutable.Set[Subscriber[_ >: T]]()
       override def subscribe(subscriber: Subscriber[_ >: T]): Unit = {
         if (!subscribers.contains(subscriber)) {
+          subscriber.onSubscribe(new Subscription {
+            override def cancel(): Unit = {
+              subscribers.remove(subscriber)
+            }
+            override def request(n: Long): Unit = {
+              //We're not doing anything special here. But the subscriber wants to know who it's
+              //subscribed to if it's doing batching, so we'll make it think we care.
+              //We don't actually care about its demands.
+            }
+          })
           subscribers.add(subscriber)
         }
       }
@@ -73,16 +83,6 @@ class TweetService @Inject()(config: Configuration, appLifecycle: ApplicationLif
 
         override def onStatus(status: Status): Unit = {
           subscribers.foreach { subscriber =>
-            subscriber.onSubscribe(new Subscription {
-              override def cancel(): Unit = {
-                subscribers.remove(subscriber)
-              }
-              override def request(n: Long): Unit = {
-                //We're not doing anything special here. But the subscriber wants to know who it's
-                //subscribed to if it's doing batching, so we'll make it think we care.
-                //We don't actually care about its demands.
-              }
-            })
             subscriber.onNext(status)
           }
         }
