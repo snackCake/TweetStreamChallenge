@@ -78,6 +78,9 @@ class TweetService @Inject()(config: Configuration, appLifecycle: ApplicationLif
                 subscribers.remove(subscriber)
               }
               override def request(n: Long): Unit = {
+                //We're not doing anything special here. But the subscriber wants to know who it's
+                //subscribed to if it's doing batching, so we'll make it think we care.
+                //We don't actually care about its demands.
               }
             })
             subscriber.onNext(status)
