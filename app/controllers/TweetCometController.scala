@@ -2,9 +2,8 @@ package controllers
 
 import javax.inject.Inject
 
-import akka.stream.scaladsl.Source
-import akka.stream.{OverflowStrategy, Materializer}
-import play.api.{Configuration, Logger}
+import akka.stream.Materializer
+import play.api.Configuration
 import play.api.http.ContentTypes
 import play.api.libs.Comet
 import play.api.libs.json._
@@ -12,12 +11,11 @@ import play.api.mvc._
 import services.TweetService
 
 /**
-  *
   * @author Josh Klun (jklun@nerdery.com)
   */
-class TweetCometController  @Inject()(materializer: Materializer,
-                                      config: Configuration,
-                                      tweetService: TweetService) extends Controller {
+class TweetCometController @Inject()(materializer: Materializer,
+                                     config: Configuration,
+                                     tweetService: TweetService) extends Controller {
 
   private lazy val searchTerms = config.getStringSeq("tweet.tags").getOrElse(Seq(""))
 
