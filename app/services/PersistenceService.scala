@@ -11,11 +11,6 @@ import play.api.libs.concurrent.Execution.Implicits._
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
-/**
-  * TODO
-  *
-  * @author rs3vans.
-  */
 @Singleton
 class PersistenceService @Inject()(materializer: Materializer) {
 

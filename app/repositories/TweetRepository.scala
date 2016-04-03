@@ -5,18 +5,16 @@ import javax.inject.Inject
 import com.github.tototoshi.slick.MySQLJodaSupport._
 import model.Tweet
 import org.joda.time.DateTime
+import play.api.Logger
 import play.api.db.slick.{DatabaseConfigProvider, HasDatabaseConfigProvider}
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import slick.driver.JdbcProfile
 
 import scala.concurrent.Future
 
-/**
-  * TODO
-  * <p>
-  * Created by rs3vans on 4/3/16.
-  */
 class TweetRepository @Inject()(protected val dbConfigProvider: DatabaseConfigProvider) extends HasDatabaseConfigProvider[JdbcProfile] {
+
+  Logger.info(s"TweetRepository: Starting...")
 
   import driver.api._
 

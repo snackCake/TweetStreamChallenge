@@ -13,9 +13,6 @@ import twitter4j._
 import scala.collection.mutable
 import scala.concurrent.Future
 
-/**
-  *
-  */
 @Singleton
 class TweetService @Inject()(appLifecycle: ApplicationLifecycle,
                              materializer: Materializer) {
