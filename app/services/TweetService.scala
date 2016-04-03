@@ -1,14 +1,15 @@
 package services
 
 import javax.inject._
+
 import akka.NotUsed
-import akka.actor.ActorSystem
 import akka.stream._
 import akka.stream.scaladsl.Source
-import org.reactivestreams.{Subscription, Publisher, Subscriber}
-import play.api.{Configuration, Logger}
+import org.reactivestreams.{Publisher, Subscriber, Subscription}
+import play.api.Logger
 import play.api.inject.ApplicationLifecycle
 import twitter4j._
+
 import scala.collection.mutable
 import scala.concurrent.Future
 
@@ -16,13 +17,12 @@ import scala.concurrent.Future
   *
   */
 @Singleton
-class TweetService @Inject()(config: Configuration, appLifecycle: ApplicationLifecycle) {
+class TweetService @Inject()(appLifecycle: ApplicationLifecycle,
+                             materializer: Materializer) {
 
-  Logger.info(s"TweetService: Starting application.")
+  Logger.info(s"TweetService: Starting...")
 
-  private implicit val system = ActorSystem("tweet-service")
-
-  private implicit val materializer = ActorMaterializer()
+  private implicit val mat = materializer
   private val factory = new TwitterStreamFactory()
 
   def createSearchSource(searchString: Seq[String]): Source[Status, NotUsed] = {
