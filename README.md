@@ -1,6 +1,17 @@
 #TweetStreamChallenge
 
-This is a Play 2.5 application that uses Akka Streams and Twitter4J to stream Twitter data via comet.
+This is a Play 2.5 application that uses Akka Streams and Twitter4J to stream Twitter data via comet. It also stores
+all streamed tweets into a database (MySQL).
+
+##Setup
+
+To initially setup the database in your local environment, install Vagrant (https://www.vagrantup.com/) and
+VirtualBox (https://www.virtualbox.org/). Then, from the `mysql-vagrant` directory, run the following command:
+`vagrant up`
+
+After downloading and provisioning, the Vagrant/VirtualBox instance should be up and running with MySQL. The database
+`play` should have been created (but will be empty). The needed table(s) will be created automatically on startup of
+the application.
 
 ##Running
 
@@ -10,6 +21,12 @@ To run, make sure the JVM is running with the appropriate Twitter4J system prope
 `./activator run -Dtwitter4j.debug=true -Dtwitter4j.oauth.consumerKey=*************** -Dtwitter4j.oauth.consumerSecret=*************** -Dtwitter4j.oauth.accessToken=*************** -Dtwitter4j.oauth.accessTokenSecret=***************`
 
 Then, view the site at: http://localhost:9000
+
+## Persisted Tweets
+
+All streamed tweets will be persisted to the `play.tweet` table. You can view these by connecting to the running MySQL
+instance in your Vagrant box. The database connection information can be seen by looking at the appropriate section
+in the Play `application.conf`.
 
 ## Challenge 1
 
